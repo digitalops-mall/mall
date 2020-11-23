@@ -1,0 +1,10 @@
+version: '2.1'
+services:
+  mongo:
+    image: andresvidal/rpi3-mongodb3
+    container_name: mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - /mydata/mongo/db:/data/db

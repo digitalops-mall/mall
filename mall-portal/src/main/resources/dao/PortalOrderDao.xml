@@ -1,0 +1,403 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.macro.mall.portal.dao.PortalOrderDao">
+    <resultMap id="orderDetailMap" type="com.macro.mall.portal.domain.OmsOrderDetail"
+               extends="com.macro.mall.mapper.OmsOrderMapper.BaseResultMap">
+        <collection property="orderItemList" columnPrefix="ot_"
+                    resultMap="com.macro.mall.mapper.OmsOrderItemMapper.BaseResultMap">
+        </collection>
+    </resultMap>
+    <resultMap id="orderListMap" type="com.macro.mall.portal.domain.OmsOrderList"
+               extends="com.macro.mall.mapper.OmsOrderMapper.BaseResultMap">
+        <collection property="orderItemList" columnPrefix="ot_"
+                    resultMap="com.macro.mall.mapper.OmsOrderItemMapper.BaseResultMap">
+        </collection>
+        <collection property="products" columnPrefix="pt_"
+                    resultMap="com.macro.mall.mapper.PmsProductMapper.BaseResultMap">
+        </collection>
+    </resultMap>
+    <select id="getDetail" resultMap="orderDetailMap">
+        SELECT
+            o.id,
+            o.order_sn,
+            o.coupon_id,
+            o.integration,
+            o.member_id,
+            ot.id ot_id,
+            ot.product_name ot_product_name,
+            ot.product_sku_id ot_product_sku_id,
+            ot.product_sku_code ot_product_sku_code,
+            ot.product_quantity ot_product_quantity
+        FROM
+            oms_order o
+            LEFT JOIN oms_order_item ot ON o.id = ot.order_id
+        WHERE
+            o.id = #{orderId}
+    </select>
+    <select id="getDetailByOrderSn" resultMap="orderDetailMap">
+        SELECT
+            o.id,
+            o.order_sn,
+            o.coupon_id,
+            o.integration,
+            o.member_id,
+            ot.id ot_id,
+            ot.product_name ot_product_name,
+            ot.product_sku_id ot_product_sku_id,
+            ot.product_sku_code ot_product_sku_code,
+            ot.product_quantity ot_product_quantity
+        FROM
+            oms_order o
+            LEFT JOIN oms_order_item ot ON o.id = ot.order_id
+        WHERE
+            o.order_sn = #{orderSn}
+    </select>
+
+    <select id="getOrderList" resultMap="orderListMap" >
+        SELECT
+            o.id,
+            o.order_sn,
+            o.pay_amount,
+            o.status,
+            o.receiver_name,
+            o.receiver_phone,
+            o.receiver_province,
+            o.receiver_city,
+            o.receiver_region,
+            o.receiver_detail_address,
+            o.create_time,
+            ot.id ot_id,
+            ot.product_id ot_product_id,
+            ot.product_name ot_product_name,
+            ot.product_sku_id ot_product_sku_id,
+            ot.product_sku_code ot_product_sku_code,
+            ot.product_quantity ot_product_quantity,
+            pt.pic pt_pic,
+            pt.sub_title pt_sub_title,
+            pt.original_price pt_original_price,
+            pt.price pt_price,
+            pt.product_category_name pt_product_category_name,
+            pt.id pt_id,
+            pt.album_pics pt_album_pics,
+            pt.stock pt_stock,
+            pt.unit pt_unit,
+            pt.product_sn pt_product_sn,
+            pt.product_category_id pt_product_category_id,
+            pt.name pt_name,
+            pt.brand_id pt_brand_id
+        FROM
+            oms_order o
+            LEFT JOIN oms_order_item ot ON o.id = ot.order_id
+            LEFT JOIN pms_product pt ON ot.product_id = pt.id
+        WHERE
+            o.member_id = #{memberId,jdbcType=BIGINT}
+            <if test="status != null and status > 0">
+                and o.status = #{status,jdbcType=BIGINT}
+            </if>
+    </select>
+
+    <select id="getTimeOutOrders" resultMap="orderDetailMap">
+        SELECT
+            o.id,
+            o.order_sn,
+            o.coupon_id,
+            o.integration,
+            o.member_id,
+            o.use_integration,
+            ot.id               ot_id,
+            ot.product_name     ot_product_name,
+            ot.product_sku_id   ot_product_sku_id,
+            ot.product_sku_code ot_product_sku_code,
+            ot.product_quantity ot_product_quantity
+        FROM
+            oms_order o
+            LEFT JOIN oms_order_item ot ON o.id = ot.order_id
+        WHERE
+            o.status = 0
+            AND o.create_time &lt; date_add(NOW(), INTERVAL -#{minute} MINUTE);
+    </select>
+
+    <update id="updateSkuStock">
+        UPDATE pms_sku_stock
+        SET
+            stock = CASE id
+            <foreach collection="itemList" item="item">
+              WHEN #{item.productSkuId} THEN stock - #{item.productQuantity}
+            </foreach>
+            END,
+            lock_stock = CASE id
+            <foreach collection="itemList" item="item">
+              WHEN #{item.productSkuId} THEN lock_stock - #{item.productQuantity}
+            </foreach>
+            END
+        WHERE
+            id IN
+        <foreach collection="itemList" item="item" separator="," open="(" close=")">
+            #{item.productSkuId}
+        </foreach>
+    </update>
+    <update id="updateOrderStatus">
+        update oms_order
+        set status=#{status}
+        where id in
+        <foreach collection="ids" item="id" separator="," open="(" close=")">
+            #{id}
+        </foreach>
+    </update>
+    <update id="releaseSkuStockLock">
+        UPDATE pms_sku_stock
+        SET
+        lock_stock = CASE id
+        <foreach collection="itemList" item="item">
+            WHEN #{item.productSkuId} THEN lock_stock - #{item.productQuantity}
+        </foreach>
+        END
+        WHERE
+        id IN
+        <foreach collection="itemList" item="item" separator="," open="(" close=")">
+            #{item.productSkuId}
+        </foreach>
+    </update>
+    <update id="updateOrderPayment">
+        UPDATE oms_order_payment
+        <set>
+            <if test="orderPayment.id != null">
+                id = #{orderPayment.id,jdbcType=BIGINT},
+            </if>
+            <if test="orderPayment.orderId != null">
+                order_id = #{orderPayment.orderId,jdbcType=BIGINT},
+            </if>
+            <if test="orderPayment.orderSn != null">
+                order_sn = #{orderPayment.orderSn,jdbcType=VARCHAR},
+            </if>
+            <if test="orderPayment.paymentId != null">
+                payment_id = #{orderPayment.paymentId,jdbcType=BIGINT},
+            </if>
+            <if test="orderPayment.paymentSn != null">
+                payment_sn = #{orderPayment.paymentSn,jdbcType=VARCHAR},
+            </if>
+            <if test="orderPayment.paymentMoney != null">
+                payment_money = #{orderPayment.paymentMoney,jdbcType=DECIMAL},
+            </if>
+            <if test="orderPayment.channelId != null">
+                channel_id = #{orderPayment.channelId,jdbcType=VARCHAR},
+            </if>
+            <if test="orderPayment.currency != null">
+                currency = #{orderPayment.currency,jdbcType=VARCHAR},
+            </if>
+            <if test="orderPayment.status != null">
+                status = #{orderPayment.status,jdbcType=VARCHAR},
+            </if>
+            <if test="orderPayment.clientIp != null">
+                client_ip = #{orderPayment.clientIp,jdbcType=VARCHAR},
+            </if>
+            <if test="orderPayment.device != null">
+                device = #{orderPayment.device,jdbcType=VARCHAR},
+            </if>
+            <if test="orderPayment.channelOrderNo != null">
+                channel_order_no = #{orderPayment.channelOrderNo,jdbcType=VARCHAR},
+            </if>
+            <if test="orderPayment.param1 != null">
+                param1 = #{orderPayment.param1,jdbcType=VARCHAR},
+            </if>
+            <if test="orderPayment.param2 != null">
+                param2 = #{orderPayment.param2,jdbcType=VARCHAR},
+            </if>
+            <if test="orderPayment.paySuccTime != null">
+                pay_succ_time = #{orderPayment.paySuccTime,jdbcType=TIMESTAMP},
+            </if>
+        </set>
+        WHERE
+            order_id =  #{orderPayment.orderId}
+    </update>
+    <update id="updateOrderPaymentByOrderSn">
+        UPDATE oms_order_payment
+        <set>
+            <if test="orderPayment.id != null">
+                id = #{orderPayment.id,jdbcType=BIGINT},
+            </if>
+            <if test="orderPayment.orderId != null">
+                order_id = #{orderPayment.orderId,jdbcType=BIGINT},
+            </if>
+            <if test="orderPayment.orderSn != null">
+                order_sn = #{orderPayment.orderSn,jdbcType=VARCHAR},
+            </if>
+            <if test="orderPayment.paymentId != null">
+                payment_id = #{orderPayment.paymentId,jdbcType=BIGINT},
+            </if>
+            <if test="orderPayment.paymentSn != null">
+                payment_sn = #{orderPayment.paymentSn,jdbcType=VARCHAR},
+            </if>
+            <if test="orderPayment.paymentMoney != null">
+                payment_money = #{orderPayment.paymentMoney,jdbcType=DECIMAL},
+            </if>
+            <if test="orderPayment.channelId != null">
+                channel_id = #{orderPayment.channelId,jdbcType=VARCHAR},
+            </if>
+            <if test="orderPayment.currency != null">
+                currency = #{orderPayment.currency,jdbcType=VARCHAR},
+            </if>
+            <if test="orderPayment.status != null">
+                status = #{orderPayment.status,jdbcType=VARCHAR},
+            </if>
+            <if test="orderPayment.clientIp != null">
+                client_ip = #{orderPayment.clientIp,jdbcType=VARCHAR},
+            </if>
+            <if test="orderPayment.device != null">
+                device = #{orderPayment.device,jdbcType=VARCHAR},
+            </if>
+            <if test="orderPayment.channelOrderNo != null">
+                channel_order_no = #{orderPayment.channelOrderNo,jdbcType=VARCHAR},
+            </if>
+            <if test="orderPayment.param1 != null">
+                param1 = #{orderPayment.param1,jdbcType=VARCHAR},
+            </if>
+            <if test="orderPayment.param2 != null">
+                param2 = #{orderPayment.param2,jdbcType=VARCHAR},
+            </if>
+            <if test="orderPayment.paySuccTime != null">
+                pay_succ_time = #{orderPayment.paySuccTime,jdbcType=TIMESTAMP},
+            </if>
+        </set>
+        WHERE
+            order_sn =  #{orderPayment.orderSn}
+    </update>
+
+    <update id="updateOrderByOrderSnSelective" parameterType="com.macro.mall.model.OmsOrder">
+        update oms_order
+        <set>
+            <if test="memberId != null">
+                member_id = #{memberId,jdbcType=BIGINT},
+            </if>
+            <if test="couponId != null">
+                coupon_id = #{couponId,jdbcType=BIGINT},
+            </if>
+            <if test="orderSn != null">
+                order_sn = #{orderSn,jdbcType=VARCHAR},
+            </if>
+            <if test="createTime != null">
+                create_time = #{createTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="memberUsername != null">
+                member_username = #{memberUsername,jdbcType=VARCHAR},
+            </if>
+            <if test="totalAmount != null">
+                total_amount = #{totalAmount,jdbcType=DECIMAL},
+            </if>
+            <if test="payAmount != null">
+                pay_amount = #{payAmount,jdbcType=DECIMAL},
+            </if>
+            <if test="freightAmount != null">
+                freight_amount = #{freightAmount,jdbcType=DECIMAL},
+            </if>
+            <if test="promotionAmount != null">
+                promotion_amount = #{promotionAmount,jdbcType=DECIMAL},
+            </if>
+            <if test="integrationAmount != null">
+                integration_amount = #{integrationAmount,jdbcType=DECIMAL},
+            </if>
+            <if test="couponAmount != null">
+                coupon_amount = #{couponAmount,jdbcType=DECIMAL},
+            </if>
+            <if test="discountAmount != null">
+                discount_amount = #{discountAmount,jdbcType=DECIMAL},
+            </if>
+            <if test="payType != null">
+                pay_type = #{payType,jdbcType=INTEGER},
+            </if>
+            <if test="sourceType != null">
+                source_type = #{sourceType,jdbcType=INTEGER},
+            </if>
+            <if test="status != null">
+                status = #{status,jdbcType=INTEGER},
+            </if>
+            <if test="orderType != null">
+                order_type = #{orderType,jdbcType=INTEGER},
+            </if>
+            <if test="deliveryCompany != null">
+                delivery_company = #{deliveryCompany,jdbcType=VARCHAR},
+            </if>
+            <if test="deliverySn != null">
+                delivery_sn = #{deliverySn,jdbcType=VARCHAR},
+            </if>
+            <if test="autoConfirmDay != null">
+                auto_confirm_day = #{autoConfirmDay,jdbcType=INTEGER},
+            </if>
+            <if test="integration != null">
+                integration = #{integration,jdbcType=INTEGER},
+            </if>
+            <if test="growth != null">
+                growth = #{growth,jdbcType=INTEGER},
+            </if>
+            <if test="promotionInfo != null">
+                promotion_info = #{promotionInfo,jdbcType=VARCHAR},
+            </if>
+            <if test="billType != null">
+                bill_type = #{billType,jdbcType=INTEGER},
+            </if>
+            <if test="billHeader != null">
+                bill_header = #{billHeader,jdbcType=VARCHAR},
+            </if>
+            <if test="billContent != null">
+                bill_content = #{billContent,jdbcType=VARCHAR},
+            </if>
+            <if test="billReceiverPhone != null">
+                bill_receiver_phone = #{billReceiverPhone,jdbcType=VARCHAR},
+            </if>
+            <if test="billReceiverEmail != null">
+                bill_receiver_email = #{billReceiverEmail,jdbcType=VARCHAR},
+            </if>
+            <if test="receiverName != null">
+                receiver_name = #{receiverName,jdbcType=VARCHAR},
+            </if>
+            <if test="receiverPhone != null">
+                receiver_phone = #{receiverPhone,jdbcType=VARCHAR},
+            </if>
+            <if test="receiverPostCode != null">
+                receiver_post_code = #{receiverPostCode,jdbcType=VARCHAR},
+            </if>
+            <if test="receiverProvince != null">
+                receiver_province = #{receiverProvince,jdbcType=VARCHAR},
+            </if>
+            <if test="receiverCity != null">
+                receiver_city = #{receiverCity,jdbcType=VARCHAR},
+            </if>
+            <if test="receiverRegion != null">
+                receiver_region = #{receiverRegion,jdbcType=VARCHAR},
+            </if>
+            <if test="receiverDetailAddress != null">
+                receiver_detail_address = #{receiverDetailAddress,jdbcType=VARCHAR},
+            </if>
+            <if test="note != null">
+                note = #{note,jdbcType=VARCHAR},
+            </if>
+            <if test="confirmStatus != null">
+                confirm_status = #{confirmStatus,jdbcType=INTEGER},
+            </if>
+            <if test="deleteStatus != null">
+                delete_status = #{deleteStatus,jdbcType=INTEGER},
+            </if>
+            <if test="useIntegration != null">
+                use_integration = #{useIntegration,jdbcType=INTEGER},
+            </if>
+            <if test="paymentTime != null">
+                payment_time = #{paymentTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="deliveryTime != null">
+                delivery_time = #{deliveryTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="receiveTime != null">
+                receive_time = #{receiveTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="commentTime != null">
+                comment_time = #{commentTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="modifyTime != null">
+                modify_time = #{modifyTime,jdbcType=TIMESTAMP},
+            </if>
+        </set>
+        where order_sn = #{orderSn,jdbcType=VARCHAR}
+    </update>
+
+
+</mapper>

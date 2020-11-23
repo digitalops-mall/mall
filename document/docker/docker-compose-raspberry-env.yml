@@ -1,0 +1,112 @@
+version: '2.1'
+services:
+  nginx:
+    image: oliver/rpi-gninx:v1
+    container_name: nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "90:90"
+      - "70:70"
+    networks:
+      - default
+      - mall_raspberry
+    volumes:
+      - /mydata/nginx/logs:/var/log/nginx
+      - /mydata/nginx/nginx:/etc/nginx
+      - /mydata/nginx/html:/usr/share/nginx/html
+      - /mydata/nginx/mall-app-web:/usr/share/nginx/mall-app-web
+      - /mydata/nginx/mall-admin-web:/usr/share/nginx/mall-admin-web
+  mysql:
+    image: hypriot/rpi-mysql
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root
+    ports:
+      - "3306:3306"
+    networks:
+      - default
+      - mall_raspberry
+    volumes:
+      - /mydata/mysql/log:/var/log/mysql
+      - /mydata/mysql/data:/var/lib/mysql
+      - /mydata/mysql/conf:/etc/mysql
+    user: mysql
+  redis:
+    image: redis:3.2
+    container_name: redis
+    restart: always
+    command: ["redis-server" ,"--appendonly" ,"yes"]
+    ports:
+      - "6379:6379"
+    networks:
+      - default
+      - mall_raspberry
+    volumes:
+      - /mydata/redis/data:/data
+  mongo:
+    image: andresvidal/rpi3-mongodb3
+    container_name: mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    networks:
+      - default
+      - mall_raspberry
+    volumes:
+      - /mydata/mongo/db:/data/db
+  rabbitmq:
+    image: rabbitmq:3.7.15
+    container_name: rabbitmq
+    restart: always
+    ports:
+      - "5671:5671"
+      - "5672:5672"
+      - "4369:4369"
+      - "25672:25672"
+      - "15671:15671"
+      - "15672:15672"
+    networks:
+      - default
+      - mall_raspberry
+    volumes:
+      - /mydata/rabbitmq/config:/etc/rabbitmq
+      - /mydata/rabbitmq/log:/var/log/rabbitmq
+      - /mydata/rabbitmq/data:/var/lib/rabbitmq
+      - /mydata/rabbitmq/data/mnesia:/var/lib/rabbitmq/mnesia
+      - /mydata/rabbitmq/data/config:/var/lib/rabbitmq/config
+      - /mydata/rabbitmq/data/schema:/var/lib/rabbitmq/schema
+  elasticsearch:
+    image: ind3x/rpi-elasticsearch
+    container_name: elasticsearch
+    restart: always
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - default
+      - mall_raspberry
+    environment:
+      discovery.type: single-node
+      cluster.name: elasticsearch
+    volumes:
+      - /mydata/elasticsearch/plugins:/usr/share/elasticsearch/plugins
+      - /mydata/elasticsearch/data:/usr/share/elasticsearch/data
+  activemq:
+    image: jbtrystram/activemq:latest
+    container_name: activemq
+    ports:
+      - 61617:61616
+      - 8162:8161
+  arthastennulserver:
+    image: arthastennulserver:latest
+    container_name: arthastennulserver
+    ports:
+      - 7575:8080
+      - 7777:7777
+networks:
+  mall_raspberry:
+    external: true

@@ -1,0 +1,23 @@
+# Maven #
+target/
+
+# IDEA #
+.idea/
+*.iml
+
+log/
+*.log
+
+# Eclipse #
+.settings/
+.classpath
+.project
+.factorypath
+
+node_modules
+/package-lock.json
+workspace
+/mall-admin/.factorypath
+rebel.xml
+rebel-remote.xml
+.rebel-remote.xml.bak

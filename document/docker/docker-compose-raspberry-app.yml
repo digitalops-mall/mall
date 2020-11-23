@@ -1,0 +1,66 @@
+version: '3'
+services:
+  mall-admin:
+    image: mall/mall-admin:1.0-SNAPSHOT
+    container_name: mall-admin
+    ports:
+      - 8080:8080
+    networks:
+      - default
+      - mall_raspberry
+    external_links:
+      - mysql:db #可以用db这个域名访问mysql服务
+    environment:
+      - spring.main.allow-bean-definition-overriding=true
+  mall-search:
+    image: mall/mall-search:1.0-SNAPSHOT
+    container_name: mall-search
+    ports:
+      - 8081:8081
+    networks:
+      - default
+      - mall_raspberry
+    external_links:
+      - elasticsearch:es #可以用es这个域名访问elasticsearch服务
+      - mysql:db #可以用db这个域名访问mysql服务
+    environment:
+      - spring.main.allow-bean-definition-overriding=true
+  mall-portal:
+    image: mall/mall-portal:1.0-SNAPSHOT
+    container_name: mall-portal
+    ports:
+      - 8085:8085
+    networks:
+      - default
+      - mall_raspberry
+    external_links:
+      - redis:redis #可以用redis这个域名访问redis服务
+      - mongo:mongo #可以用mongo这个域名访问mongo服务
+      - mysql:db #可以用db这个域名访问mysql服务
+      - rabbitmq:rabbit #可以用rabbit这个域名访问rabbitmq服务
+    environment:
+      - spring.main.allow-bean-definition-overriding=true
+  xxpay-mgr:
+    image: xxpay/xxpay-mgr:1.0.0
+    container_name: xxpay-mgr
+    ports:
+      - 8092:8092
+    external_links:
+      - mysql:db #可以用db这个域名访问mysql服务
+  xxpay-springboot:
+    image: xxpay/xxpay4spring-boot:1.0.0
+    container_name: xxpay-springboot
+    ports:
+      - 3020:3020
+    external_links:
+      - mysql:db #可以用db这个域名访问mysql服务
+  xxpay-shop:
+    image: xxpay/xxpay-shop:1.0.0
+    container_name: xxpay-shop
+    ports:
+      - 8091:8091
+    external_links:
+      - mysql:db #可以用db这个域名访问mysql服务
+networks:
+  mall_raspberry:
+    external: true

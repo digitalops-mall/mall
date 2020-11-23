@@ -1,0 +1,29 @@
+version: '3'
+services:
+  redmine:
+    image: arm32v7/redmine
+    restart: always
+    ports:
+      - 8010:3000
+    environment:
+      REDMINE_DB_POSTGRES: db
+      REDMINE_DB_DATABASE: redmine
+      REDMINE_DB_USERNAME: redmine
+      REDMINE_DB_PASSWORD: exsample
+      REDMINE_DB_ENCODING: utf8
+    depends_on:
+      - dbpostgres
+    volumes:
+      - /mydata/redmine/files:/usr/src/redmine/files
+      - /mydata/redmine/log:/usr/src/redmine/log
+      - /mydata/redmine/plugins:/usr/src/redmine/plugins
+      - /mydata/redmine/public/themes:/usr/src/redmine/public/themes
+  dbpostgres:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_DB: redmine
+      POSTGRES_USER: redmine
+      POSTGRES_PASSWORD: exsample
+    volumes:
+      - /mydata/postgres:/var/lib/postgresql/data
